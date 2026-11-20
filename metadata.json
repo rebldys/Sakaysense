@@ -1,0 +1,6 @@
+{
+  "name": "SakaySense: Jeepney Edition",
+  "description": "Filipino commuter assistance platform for live jeepney GPS tracking, route exploration, journey reminders, and fare guidance.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

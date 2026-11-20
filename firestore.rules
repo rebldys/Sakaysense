@@ -1,0 +1,281 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core helper primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isVerified() && request.auth.token.email == 'rebldys@gmail.com';
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isDriverAccount(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid)) &&
+        get(/databases/$(database)/documents/users/$(uid)).data.role == 'driver';
+    }
+
+    // Validation Blueprints
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'name', 'role', 'passengerCategory', 'favoriteRouteIds', 'recentRouteIds', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'name', 'role', 'jeepneyId', 'plateNumber', 'passengerCategory', 'favoriteRouteIds', 'recentRouteIds', 'createdAt', 'updatedAt']) &&
+        isValidId(data.uid) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+        data.role in ['passenger', 'driver'] &&
+        (!('jeepneyId' in data) || data.jeepneyId == null || (isValidId(data.jeepneyId) && data.jeepneyId.size() <= 32)) &&
+        (!('plateNumber' in data) || data.plateNumber == null || (data.plateNumber is string && data.plateNumber.size() <= 20)) &&
+        data.passengerCategory in ['regular', 'student', 'senior', 'pwd'] &&
+        data.favoriteRouteIds is list && data.favoriteRouteIds.size() <= 12 &&
+        (data.favoriteRouteIds.size() == 0 || (data.favoriteRouteIds[0] is string && data.favoriteRouteIds[0].size() <= 64)) &&
+        data.recentRouteIds is list && data.recentRouteIds.size() <= 8 &&
+        (data.recentRouteIds.size() == 0 || (data.recentRouteIds[0] is string && data.recentRouteIds[0].size() <= 64)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidJourney(data) {
+      return data.keys().hasAll(['journeyId', 'userId', 'routeId', 'routeName', 'destinationStop', 'mode', 'createdAt']) &&
+        data.keys().hasOnly(['journeyId', 'userId', 'routeId', 'routeName', 'destinationStop', 'mode', 'createdAt']) &&
+        isValidId(data.journeyId) &&
+        isValidId(data.userId) &&
+        isValidId(data.routeId) && data.routeId.size() <= 64 &&
+        data.routeName is string && data.routeName.size() >= 1 && data.routeName.size() <= 120 &&
+        data.destinationStop is string && data.destinationStop.size() >= 1 && data.destinationStop.size() <= 100 &&
+        data.mode in ['live', 'simulated_journey'] &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidRoute(data) {
+      return data.keys().hasAll(['routeId', 'code', 'routeName', 'origin', 'destination', 'distanceKm', 'estimatedMinutes', 'vehicleClass', 'isPublic', 'stops']) &&
+        data.keys().hasOnly(['routeId', 'code', 'routeName', 'origin', 'destination', 'distanceKm', 'estimatedMinutes', 'vehicleClass', 'colorHex', 'isPublic', 'stops']) &&
+        isValidId(data.routeId) && data.routeId.size() <= 64 &&
+        data.code is string && data.code.size() >= 2 && data.code.size() <= 24 &&
+        data.routeName is string && data.routeName.size() >= 3 && data.routeName.size() <= 120 &&
+        data.origin is string && data.origin.size() >= 2 && data.origin.size() <= 100 &&
+        data.destination is string && data.destination.size() >= 2 && data.destination.size() <= 100 &&
+        data.distanceKm is number && data.distanceKm > 0 && data.distanceKm <= 200 &&
+        data.estimatedMinutes is number && data.estimatedMinutes > 0 && data.estimatedMinutes <= 600 &&
+        data.vehicleClass in ['traditional', 'modernized'] &&
+        (!('colorHex' in data) || (data.colorHex is string && data.colorHex.size() <= 16)) &&
+        data.isPublic is bool &&
+        data.stops is list && data.stops.size() >= 2 && data.stops.size() <= 30 &&
+        data.stops[0] is map;
+    }
+
+    function isValidJeepney(data) {
+      return data.keys().hasAll(['jeepneyId', 'plateNumber', 'unitName', 'driverId', 'driverDisplayName', 'isActive', 'driverStatus', 'lastUpdated']) &&
+        data.keys().hasOnly(['jeepneyId', 'plateNumber', 'unitName', 'driverId', 'driverDisplayName', 'routeId', 'isActive', 'driverStatus', 'latitude', 'longitude', 'accuracy', 'speedKmh', 'heading', 'lastUpdated']) &&
+        isValidId(data.jeepneyId) && data.jeepneyId.size() <= 32 &&
+        data.plateNumber is string && data.plateNumber.size() >= 2 && data.plateNumber.size() <= 20 &&
+        data.unitName is string && data.unitName.size() >= 2 && data.unitName.size() <= 80 &&
+        isValidId(data.driverId) &&
+        data.driverDisplayName is string && data.driverDisplayName.size() >= 1 && data.driverDisplayName.size() <= 40 &&
+        (!('routeId' in data) || data.routeId == null || (isValidId(data.routeId) && data.routeId.size() <= 64)) &&
+        data.isActive is bool &&
+        data.driverStatus in ['online', 'on_trip', 'offline', 'gps_unavailable'] &&
+        (!('latitude' in data) || data.latitude == null || (data.latitude is number && data.latitude >= -90 && data.latitude <= 90)) &&
+        (!('longitude' in data) || data.longitude == null || (data.longitude is number && data.longitude >= -180 && data.longitude <= 180)) &&
+        (!('accuracy' in data) || data.accuracy == null || (data.accuracy is number && data.accuracy >= 0 && data.accuracy <= 50000)) &&
+        (!('speedKmh' in data) || data.speedKmh == null || (data.speedKmh is number && data.speedKmh >= 0 && data.speedKmh <= 200)) &&
+        (!('heading' in data) || data.heading == null || (data.heading is number && data.heading >= 0 && data.heading <= 360)) &&
+        data.lastUpdated is timestamp;
+    }
+
+    function isValidTrip(data) {
+      return data.keys().hasAll(['tripId', 'driverId', 'jeepneyId', 'routeId', 'startedAt', 'status']) &&
+        data.keys().hasOnly(['tripId', 'driverId', 'jeepneyId', 'routeId', 'startedAt', 'endedAt', 'status']) &&
+        isValidId(data.tripId) && data.tripId.size() <= 64 &&
+        isValidId(data.driverId) &&
+        isValidId(data.jeepneyId) && data.jeepneyId.size() <= 32 &&
+        isValidId(data.routeId) && data.routeId.size() <= 64 &&
+        data.startedAt is timestamp &&
+        (!('endedAt' in data) || data.endedAt == null || data.endedAt is timestamp) &&
+        data.status in ['active', 'completed'];
+    }
+
+    // Users Collection (strict owner-only reads/writes; role escalation blocked)
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if false;
+
+      allow create: if isSignedIn() && isVerified() && isValidId(userId) && isValidUser(incoming()) && (
+        incoming().uid == userId &&
+        incoming().uid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (
+          (incoming().role == 'passenger' && (!('jeepneyId' in incoming()) || incoming().jeepneyId == null)) ||
+          isAdmin()
+        )
+      );
+
+      allow update: if isSignedIn() && isVerified() && isValidId(userId) && isValidUser(incoming()) && (
+        (
+          isAdmin() &&
+          incoming().uid == existing().uid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time
+        ) ||
+        (
+          isOwner(userId) &&
+          incoming().uid == existing().uid &&
+          incoming().role == existing().role &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'passengerCategory', 'favoriteRouteIds', 'recentRouteIds', 'updatedAt'])
+        )
+      );
+
+      allow delete: if false;
+
+      // User Journey History Subcollection
+      match /journeys/{journeyId} {
+        allow get: if isSignedIn() && isValidId(userId) && isValidId(journeyId) && (isOwner(userId) || isAdmin());
+        allow list: if isSignedIn() && isValidId(userId) && isOwner(userId) && resource.data.userId == request.auth.uid;
+
+        allow create: if isSignedIn() && isVerified() && isValidId(userId) && isValidId(journeyId) && isOwner(userId) &&
+          isValidJourney(incoming()) &&
+          incoming().journeyId == journeyId &&
+          incoming().userId == request.auth.uid &&
+          incoming().createdAt == request.time &&
+          exists(/databases/$(database)/documents/users/$(userId));
+
+        allow update: if false;
+        allow delete: if isSignedIn() && isValidId(userId) && isValidId(journeyId) && (isOwner(userId) || isAdmin());
+      }
+    }
+
+    // Public Jeepney Routes Catalog
+    match /routes/{routeId} {
+      allow get: if isSignedIn() && isValidId(routeId);
+      allow list: if isSignedIn() && resource.data.isPublic == true;
+
+      allow create, update: if isSignedIn() && isVerified() && isAdmin() && isValidId(routeId) && isValidRoute(incoming()) &&
+        incoming().routeId == routeId;
+
+      allow delete: if false;
+    }
+
+    // Participating Jeepneys (Public active read; Driver-only GPS updates)
+    match /jeepneys/{jeepneyId} {
+      allow get: if isSignedIn() && isValidId(jeepneyId) && (
+        existing().isActive == true || existing().driverId == request.auth.uid || isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.isActive == true || resource.data.driverId == request.auth.uid || isAdmin()
+      );
+
+      allow create: if isSignedIn() && isVerified() && isAdmin() && isValidId(jeepneyId) && isValidJeepney(incoming()) &&
+        incoming().jeepneyId == jeepneyId &&
+        incoming().lastUpdated == request.time;
+
+      allow update: if isSignedIn() && isVerified() && isValidId(jeepneyId) && isValidJeepney(incoming()) && (
+        (
+          isAdmin() &&
+          incoming().jeepneyId == existing().jeepneyId &&
+          incoming().lastUpdated == request.time
+        ) ||
+        (
+          existing().driverId == request.auth.uid &&
+          incoming().driverId == existing().driverId &&
+          incoming().jeepneyId == existing().jeepneyId &&
+          incoming().lastUpdated == request.time &&
+          isDriverAccount(request.auth.uid) &&
+          (
+            // Action 1: Update driver status (online / offline / gps_unavailable)
+            (
+              incoming().isActive == false &&
+              incoming().driverStatus in ['online', 'offline', 'gps_unavailable'] &&
+              incoming().latitude == null &&
+              incoming().longitude == null &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['isActive', 'driverStatus', 'latitude', 'longitude', 'accuracy', 'speedKmh', 'heading', 'lastUpdated'])
+            ) ||
+            // Action 2: Start Trip & Publish Initial GPS
+            (
+              incoming().isActive == true &&
+              incoming().driverStatus == 'on_trip' &&
+              incoming().routeId is string &&
+              incoming().latitude is number &&
+              incoming().longitude is number &&
+              exists(/databases/$(database)/documents/routes/$(incoming().routeId)) &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['routeId', 'isActive', 'driverStatus', 'latitude', 'longitude', 'accuracy', 'speedKmh', 'heading', 'lastUpdated'])
+            ) ||
+            // Action 3: Publish Live GPS Location Update while On Trip
+            (
+              existing().isActive == true &&
+              existing().driverStatus == 'on_trip' &&
+              incoming().isActive == true &&
+              incoming().driverStatus == 'on_trip' &&
+              incoming().routeId == existing().routeId &&
+              incoming().latitude is number &&
+              incoming().longitude is number &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['latitude', 'longitude', 'accuracy', 'speedKmh', 'heading', 'lastUpdated'])
+            )
+          )
+        )
+      );
+
+      allow delete: if false;
+    }
+
+    // Driver Trips Collection
+    match /trips/{tripId} {
+      allow get: if isSignedIn() && isValidId(tripId) && (existing().driverId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && resource.data.driverId == request.auth.uid;
+
+      allow create: if isSignedIn() && isVerified() && isValidId(tripId) && isValidTrip(incoming()) &&
+        incoming().tripId == tripId &&
+        incoming().driverId == request.auth.uid &&
+        incoming().status == 'active' &&
+        incoming().startedAt == request.time &&
+        (!('endedAt' in incoming()) || incoming().endedAt == null) &&
+        isDriverAccount(request.auth.uid) &&
+        exists(/databases/$(database)/documents/jeepneys/$(incoming().jeepneyId)) &&
+        get(/databases/$(database)/documents/jeepneys/$(incoming().jeepneyId)).data.driverId == request.auth.uid &&
+        exists(/databases/$(database)/documents/routes/$(incoming().routeId));
+
+      allow update: if isSignedIn() && isVerified() && isValidId(tripId) && isValidTrip(incoming()) && (
+        isAdmin() ||
+        (
+          existing().driverId == request.auth.uid &&
+          existing().status == 'active' &&
+          incoming().tripId == existing().tripId &&
+          incoming().driverId == existing().driverId &&
+          incoming().jeepneyId == existing().jeepneyId &&
+          incoming().routeId == existing().routeId &&
+          incoming().startedAt == existing().startedAt &&
+          incoming().status == 'completed' &&
+          incoming().endedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'endedAt'])
+        )
+      );
+
+      allow delete: if false;
+    }
+  }
+}

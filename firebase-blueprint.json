@@ -1,0 +1,280 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated commuter or driver profile without public PII.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "role": {
+          "type": "string",
+          "enum": ["passenger", "driver"]
+        },
+        "jeepneyId": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "plateNumber": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "passengerCategory": {
+          "type": "string",
+          "enum": ["regular", "student", "senior", "pwd"]
+        },
+        "favoriteRouteIds": {
+          "type": "array",
+          "description": "Up to 12 favorite route IDs."
+        },
+        "recentRouteIds": {
+          "type": "array",
+          "description": "Up to 8 recent route IDs."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "name", "role", "passengerCategory", "favoriteRouteIds", "recentRouteIds", "createdAt", "updatedAt"]
+    },
+    "JourneyRecord": {
+      "title": "JourneyRecord",
+      "description": "Individual journey entry stored under a user subcollection.",
+      "type": "object",
+      "properties": {
+        "journeyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "routeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "routeName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "destinationStop": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["live", "simulated_journey"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["journeyId", "userId", "routeId", "routeName", "destinationStop", "mode", "createdAt"]
+    },
+    "JeepneyRoute": {
+      "title": "JeepneyRoute",
+      "description": "Public Metro Manila jeepney route catalog entry.",
+      "type": "object",
+      "properties": {
+        "routeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 24
+        },
+        "routeName": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "origin": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "destination": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "distanceKm": {
+          "type": "number"
+        },
+        "estimatedMinutes": {
+          "type": "number"
+        },
+        "vehicleClass": {
+          "type": "string",
+          "enum": ["traditional", "modernized"]
+        },
+        "isPublic": {
+          "type": "boolean"
+        },
+        "stops": {
+          "type": "array"
+        }
+      },
+      "required": ["routeId", "code", "routeName", "origin", "destination", "distanceKm", "estimatedMinutes", "vehicleClass", "isPublic", "stops"]
+    },
+    "JeepneyUnit": {
+      "title": "JeepneyUnit",
+      "description": "Public participating jeepney telemetry without driver private PII.",
+      "type": "object",
+      "properties": {
+        "jeepneyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "plateNumber": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 20
+        },
+        "unitName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "driverId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "driverDisplayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "routeId": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "driverStatus": {
+          "type": "string",
+          "enum": ["online", "on_trip", "offline", "gps_unavailable"]
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "accuracy": {
+          "type": "number"
+        },
+        "speedKmh": {
+          "type": "number"
+        },
+        "heading": {
+          "type": "number"
+        },
+        "lastUpdated": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["jeepneyId", "plateNumber", "unitName", "driverId", "driverDisplayName", "isActive", "driverStatus", "lastUpdated"]
+    },
+    "TripRecord": {
+      "title": "TripRecord",
+      "description": "Driver trip session lifecycle record.",
+      "type": "object",
+      "properties": {
+        "tripId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "driverId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "jeepneyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "routeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "completed"]
+        }
+      },
+      "required": ["tripId", "driverId", "jeepneyId", "routeId", "startedAt", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Authenticated user profile with role and commuter preferences."
+    },
+    "/users/{userId}/journeys/{journeyId}": {
+      "schema": { "$ref": "#/entities/JourneyRecord" },
+      "description": "User journey history subcollection."
+    },
+    "/routes/{routeId}": {
+      "schema": { "$ref": "#/entities/JeepneyRoute" },
+      "description": "Public jeepney route definitions."
+    },
+    "/jeepneys/{jeepneyId}": {
+      "schema": { "$ref": "#/entities/JeepneyUnit" },
+      "description": "Participating jeepney live status and GPS coordinates."
+    },
+    "/trips/{tripId}": {
+      "schema": { "$ref": "#/entities/TripRecord" },
+      "description": "Driver trip start/end records."
+    }
+  }
+}
